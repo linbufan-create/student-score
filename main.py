@@ -35,6 +35,7 @@ STUDENT_COUNT = 35
 TOTAL_STUDENTS = 32
 STUDENT_IDS = ["2026%03d" % i for i in range(1, STUDENT_COUNT + 1)]
 DATA_FILE = os.path.join(ROOT, "%s.json")
+DEFAULT_REMOTE_URL = "https://github.com/linbufan-create/student-score"
 
 RECORD_FIELDS = ("op", "points", "date")
 VALID_OPS = ("add", "less", "cancle")
@@ -262,7 +263,8 @@ def git_status_is_clean():
 
 
 def read_remote_url_file():
-    """安装器/用户可通过 remote_url.txt 提供远程仓库地址"""
+    """旧版安装器可能写入 remote_url.txt;若存在且非空则优先使用,
+    否则启动时自动配置内置的 DEFAULT_REMOTE_URL"""
     p = os.path.join(ROOT, "remote_url.txt")
     try:
         with open(p, "r", encoding="utf-8") as f:
@@ -299,18 +301,12 @@ def git_pull_on_startup():
             print("! 初始化提交失败: %s" % (err or out))
     ensure_git_identity()
     if not has_origin():
-        url = read_remote_url_file()
-        if url:
-            code, out, err = run_git("remote", "add", "origin", url)
-            if code == 0:
-                print("OK 已从 remote_url.txt 配置远程仓库: %s" % url)
-            else:
-                print("! 配置远程仓库失败: %s" % (err or out))
-    if not has_origin():
-        print("! 未配置远程仓库,跳过强拉取")
-        print("  如需多台电脑同步数据,请先执行:\n"
-              "    git -C \"%s\" remote add origin <你的远程仓库地址>" % ROOT)
-        return
+        url = read_remote_url_file() or DEFAULT_REMOTE_URL
+        code, out, err = run_git("remote", "add", "origin", url)
+        if code != 0:
+            print("! 配置远程仓库失败: %s" % (err or out))
+            return
+        print("OK 已配置远程仓库: %s" % url)
     branch = current_branch()
     print("...正在强拉取远程数据 (fetch + reset --hard origin/%s)..." % branch)
     code, out, err = run_git("fetch", "origin")

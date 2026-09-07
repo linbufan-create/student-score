@@ -1,13 +1,13 @@
-﻿; 学生积分管理 - 安装器 v1.1.0 (Inno Setup 6 脚本)
+﻿; 学生积分管理 - 安装器 v1.2.0 (Inno Setup 6 脚本)
 ; 编译: ISCC.exe student_score.iss
 ; 功能: 1) 自动安装 Git(数据同步用,exe 已自带 Python 运行环境,无需装 Python)
 ;       2) 可自由选择安装路径(默认向导中文界面)
-;       3) 部署打包好的 学生积分管理.exe 与学生数据 json
+;       3) 部署打包好的 学生积分管理.exe
 ;       4) 创建开始菜单/桌面快捷方式
-;       5) 可选填写远程git仓库地址 -> 从远程克隆数据实现多机同步
+;       5) 从内置远程仓库克隆数据(https://github.com/linbufan-create/student-score)
 
 #define MyAppName "学生积分管理"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppExeName "学生积分管理.exe"
 #define MyAppId "8F3A2C4D-9B6E-4A11-B2D0-5C7E9F1A3D55"
 
@@ -39,7 +39,7 @@ UsePreviousAppDir=yes
 
 [Messages]
 WelcomeLabel1=欢迎使用 %1 安装向导
-WelcomeLabel2=本向导会把学生积分管理系统安装到你的电脑。如果你需要多台电脑同步数据,请准备好远程仓库地址(没有可留空)。
+WelcomeLabel2=本向导会把学生积分管理系统安装到你的电脑。学生数据统一存放在内置的 GitHub 远程仓库(https://github.com/linbufan-create/student-score),安装后每次运行都会自动同步。
 SelectDirTitle=选择安装位置
 SelectDirDesc=请选择把 %1 安装到哪个文件夹。
 SelectDirLabel3=安装程序将把 %1 安装到以下文件夹:
@@ -66,41 +66,6 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\2026001.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026002.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026003.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026004.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026005.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026006.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026007.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026008.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026009.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026010.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026011.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026012.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026013.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026014.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026015.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026016.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026017.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026018.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026019.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026020.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026021.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026022.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026023.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026024.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026025.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026026.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026027.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026028.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026029.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026030.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026031.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026032.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026033.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026034.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
-Source: "..\2026035.json";     DestDir: "{app}"; Flags: ignoreversion; Check: IsCopyStudentData
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -112,37 +77,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "立即运行 {#MyAppName}"; Wor
 [Code]
 const
   WingetGit = 'Git.Git';
-
-var
-  RemotePage: TInputQueryWizardPage;
-  RemoteUrl: String;
-
-{ ---------- 安装页面:询问远程仓库(可选) ---------- }
-procedure InitializeWizard;
-begin
-  RemotePage := CreateInputQueryPage(wpSelectTasks,
-    '可选: 配置多台电脑数据同步',
-    '如果你已经有一个 git 远程仓库(存放学生数据),请把地址填在下面',
-    '例如: https://github.com/用户名/xxx.git  或  git@github.com:用户名/xxx.git'#13#10 +
-    '留空也能正常安装(数据只保存在本机)。安装后会写入 remote_url.txt,'#13#10 +
-    '之后每次运行程序会自动 git pull 同步,每次修改自动提交推送。');
-  RemotePage.Add('远程仓库地址(可留空):', False);
-end;
-
-procedure CurPageChanged(CurPageID: Integer);
-begin
-  if CurPageID = wpReady then
-  begin
-    RemoteUrl := '';
-    if RemotePage <> nil then
-      RemoteUrl := Trim(RemotePage.Values[0]);
-  end;
-end;
-
-function IsCopyStudentData: Boolean;
-begin
-  Result := (RemoteUrl = '');
-end;
+  DefaultRemoteUrl = 'https://github.com/linbufan-create/student-score';
 
 { ---------- 环境检测与自动安装(Git,exe已自带Python无需装) ---------- }
 function GitWorks: Boolean;
@@ -178,40 +113,37 @@ begin
       WizardForm.StatusLabel.Caption := '正在自动安装 Git,请稍候...';
       RunWinget(WingetGit);
     end;
-    { 第二步:若填了远程仓库地址,则克隆数据 }
-    if RemoteUrl <> '' then
-    begin
-      WizardForm.StatusLabel.Caption := '正在从远程仓库克隆学生数据...';
-      SaveStringToFile(ExpandConstant('{tmp}\ssm_setup_repo.bat'),
-        '@echo off' + #13#10 +
-        'setlocal' + #13#10 +
-        'set "APP=%~1"' + #13#10 +
-        'set "URL=%~2"' + #13#10 +
-        'set "TMPCL=%TEMP%\ssm_clone_tmp"' + #13#10 +
-        'if exist "%TMPCL%" rmdir /s /q "%TMPCL%"' + #13#10 +
-        'git clone "%URL%" "%TMPCL%" >nul 2>&1' + #13#10 +
-        'if errorlevel 1 exit /b 1' + #13#10 +
-        'robocopy "%TMPCL%\.git" "%APP%\.git" /E /NFL /NDL /NJH /NJS >nul' + #13#10 +
-        'if errorlevel 8 exit /b 2' + #13#10 +
-        'if exist "%APP%\*.json" del /q "%APP%\*.json"' + #13#10 +
-        'robocopy "%TMPCL%" "%APP%" /E /XF *.py *.bat *.exe /NFL /NDL /NJH /NJS >nul' + #13#10 +
-        'if errorlevel 8 exit /b 2' + #13#10 +
-        'git -C "%APP%" config user.name "ScoreBot" >nul 2>&1' + #13#10 +
-        'git -C "%APP%" config user.email "scorebot@local" >nul 2>&1' + #13#10 +
-        'rmdir /s /q "%TMPCL%" 2>nul' + #13#10 +
-        'exit /b 0' + #13#10,
-        True);
+    { 第二步:从内置远程仓库克隆学生数据 }
+    WizardForm.StatusLabel.Caption := '正在从内置远程仓库克隆学生数据...';
+    SaveStringToFile(ExpandConstant('{tmp}\ssm_setup_repo.bat'),
+      '@echo off' + #13#10 +
+      'setlocal' + #13#10 +
+      'set "APP=%~1"' + #13#10 +
+      'set "URL=%~2"' + #13#10 +
+      'set "TMPCL=%TEMP%\ssm_clone_tmp"' + #13#10 +
+      'if exist "%TMPCL%" rmdir /s /q "%TMPCL%"' + #13#10 +
+      'git clone "%URL%" "%TMPCL%" >nul 2>&1' + #13#10 +
+      'if errorlevel 1 exit /b 1' + #13#10 +
+      'robocopy "%TMPCL%\.git" "%APP%\.git" /E /NFL /NDL /NJH /NJS >nul' + #13#10 +
+      'if errorlevel 8 exit /b 2' + #13#10 +
+      'if exist "%APP%\*.json" del /q "%APP%\*.json"' + #13#10 +
+      'robocopy "%TMPCL%" "%APP%" /E /XF *.py *.bat *.exe /NFL /NDL /NJH /NJS >nul' + #13#10 +
+      'if errorlevel 8 exit /b 2' + #13#10 +
+      'git -C "%APP%" config user.name "ScoreBot" >nul 2>&1' + #13#10 +
+      'git -C "%APP%" config user.email "scorebot@local" >nul 2>&1' + #13#10 +
+      'rmdir /s /q "%TMPCL%" 2>nul' + #13#10 +
+      'exit /b 0' + #13#10,
+      True);
 
-      if ExecAsOriginalUser(ExpandConstant('{tmp}\ssm_setup_repo.bat'),
-          AddQuotes(ExpandConstant('{app}')) + ' ' + AddQuotes(RemoteUrl),
-          '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-         and (ResultCode = 0) then
-        MsgBox('已从远程仓库克隆最新数据到本机,之后每次运行程序都会自动同步。',
-          mbInformation, MB_OK)
-      else
-        MsgBox('从远程仓库克隆失败(错误码 ' + IntToStr(ResultCode) + ')。' +
-          '可稍后手动配置 remote_url.txt,或直接使用本机空白数据。',
-          mbError, MB_OK);
-    end;
+    if ExecAsOriginalUser(ExpandConstant('{tmp}\ssm_setup_repo.bat'),
+        AddQuotes(ExpandConstant('{app}')) + ' ' + AddQuotes(DefaultRemoteUrl),
+        '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+       and (ResultCode = 0) then
+      MsgBox('已从远程仓库克隆最新数据到本机,之后每次运行程序都会自动同步。',
+        mbInformation, MB_OK)
+    else
+      MsgBox('从远程仓库克隆失败(错误码 ' + IntToStr(ResultCode) + ')。' +
+        '请检查网络连接后重试;程序首次运行时也会自动用内置地址重试同步。',
+        mbError, MB_OK);
   end;
 end;
