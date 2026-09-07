@@ -1,0 +1,5 @@
+remote_url.txt
+installer/
+__pycache__/
+*.pyc
+学生积分管理-安装程序.exe

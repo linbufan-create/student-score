@@ -206,8 +206,8 @@ def git_repo_ready():
 
 
 def has_origin():
-    code, _, _ = run_git("remote")
-    return code == 0 and bool(_)
+    code, out, _ = run_git("remote")
+    return code == 0 and bool(out.strip())
 
 
 def ensure_git_identity():
@@ -225,15 +225,47 @@ def git_status_is_clean():
     return code == 0 and not out
 
 
+def read_remote_url_file():
+    """安装器/用户可通过 remote_url.txt 提供远程仓库地址"""
+    p = os.path.join(ROOT, "remote_url.txt")
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def git_commit_failed_noop(err_text):
+    """git commit 常见的\"没有可提交内容\"提示不算错误"""
+    return ("nothing to commit" in err_text) or ("nothing added to commit" in err_text)
+
+
 def git_pull_on_startup():
-    """启动时拉取最新数据;没有远程仓库时提示配置方法"""
+    """确保本地仓库存在 -> 提交本地改动 -> 配置远程 -> 启动时拉取最新数据"""
     if not git_repo_ready():
-        return
+        print("…首次运行,正在创建本地 git 仓库...")
+        code, out, err = run_git("init", "-b", "main")
+        if code != 0:
+            print("! git init 失败: %s" % (err or out))
+            return
+        ensure_git_identity()
+        run_git("add", "-A")
+        code, out, err = run_git("commit", "-m", "初始化本地仓库")
+        if code != 0 and not git_commit_failed_noop(err or out):
+            print("! 初始化提交失败: %s" % (err or out))
     ensure_git_identity()
     if not git_status_is_clean():
         code, out, err = run_git("commit", "-am", "同步前自动提交")
-        if code != 0 and "nothing to commit" not in err:
+        if code != 0 and not git_commit_failed_noop(err or out):
             print("! 启动前自动提交失败:\n%s" % (err or out))
+    if not has_origin():
+        url = read_remote_url_file()
+        if url:
+            code, out, err = run_git("remote", "add", "origin", url)
+            if code == 0:
+                print("✓ 已从 remote_url.txt 配置远程仓库: %s" % url)
+            else:
+                print("! 配置远程仓库失败: %s" % (err or out))
     if not has_origin():
         print("! 未配置远程仓库,跳过 git pull")
         print("  如需多台电脑同步数据,请先执行:\n"
@@ -262,7 +294,7 @@ def git_commit_push(msg, sid=None):
         print("! git add 失败: %s" % (err or out))
         return
     code, out, err = run_git("commit", "-m", msg)
-    if code != 0 and "nothing to commit" not in (err or out):
+    if code != 0 and not git_commit_failed_noop(err or out):
         print("! git commit 失败: %s" % (err or out))
         return
     if not has_origin():
@@ -396,6 +428,13 @@ def main():
 
     git_pull_on_startup()
 
+    n = create_student_files()
+    if n:
+        print("已初始化 %d 名学生的数据文件(占位学号 2026001~20260%d)"
+              % (n, STUDENT_COUNT))
+        if git_repo_ready():
+            git_commit_push("初始化缺失的学生数据文件")
+
     while True:
         try:
             raw = input("> ").strip()
@@ -438,12 +477,6 @@ def main():
 if __name__ == "__main__":
     try:
         os.makedirs(ROOT, exist_ok=True)
-        n = create_student_files()
-        if n:
-            print("已初始化 %d 名学生的数据文件(占位学号 2026001~20260%d)"
-                  % (n, STUDENT_COUNT))
-            if git_repo_ready():
-                git_commit_push("初始化学生数据文件")
         main()
     except KeyboardInterrupt:
         print("\n再见")
