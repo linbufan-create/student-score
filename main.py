@@ -12,7 +12,24 @@ import subprocess
 import sys
 from datetime import date
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    ROOT = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def setup_stdio():
+    """输出被重定向(管道/文件)时用 UTF-8 并容错,避免 ✓ 等字符在 GBK 下崩溃;
+    正常控制台窗口不受影响"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if stream is not None and not stream.isatty():
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            pass
+
+
+setup_stdio()
 STUDENT_COUNT = 35
 TOTAL_STUDENTS = 32
 STUDENT_IDS = ["2026%03d" % i for i in range(1, STUDENT_COUNT + 1)]

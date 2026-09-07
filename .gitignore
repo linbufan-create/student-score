@@ -1,5 +1,8 @@
 remote_url.txt
-installer/
+installer/*
+!installer/student_score.iss
 __pycache__/
 *.pyc
-学生积分管理-安装程序.exe
+dist/
+build/
+学生积分管理-安装程序-v*.exe
