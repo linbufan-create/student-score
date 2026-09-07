@@ -20,7 +20,7 @@ else:
 
 
 def setup_stdio():
-    """输出被重定向(管道/文件)时用 UTF-8 并容错,避免 ✓ 等字符在 GBK 下崩溃;
+    """输出被重定向(管道/文件)时用 UTF-8 并容错,避免特殊符号在 GBK 下崩溃;
     正常控制台窗口不受影响"""
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -50,7 +50,7 @@ HELP_TEXT = """\
   add <学号> <分值>           给某位学生加分(如: add 2026001 2)
   less <学号> <分值>          给某位学生减分(如: less 2026001 1)
   cancle <学号>               撤销该学生上一次的扣分
-  exit                        退出程序
+  exit / quit / q             退出程序
 
 control 模式下的操作(进入后先询问):
 
@@ -58,23 +58,36 @@ control 模式下的操作(进入后先询问):
   less <分值>     减分   (如: less 1)
   cancle          撤销上一次扣分
   help            在 control 中查看说明
-  exit            返回主菜单
+  exit / quit / q 返回主菜单
 
 使用说明:
   1. 学号可带或不带 .json 后缀;共 %d 人,程序先创建了 %d 个占位学号
-     文件(2026001~20260%d),后续可直接把文件名改成真实学号。
-  2. 每次 add/less 都要输入分值(正整数),记录里会自动保存当天的日期。
+     文件(2026001~20260%d),后续可直接把文件名改成真实学号.
+  2. 每次 add/less 都要输入分值(正整数),记录里会自动保存当天的日期.
   3. cancle 只撤销"最近一次扣分",且只允许撤销"本周"的扣分;
-     若该学生本周内没有扣分记录,则无操作;上一周及更早的扣分无法撤销。
+     若该学生本周内没有扣分记录,则无操作;上一周及更早的扣分无法撤销.
   4. 数据文件结构(标准 JSON):
        {"score": 100, "records": [{"op": "add", "points": 2, "date": "2026-09-07"}]}
   5. 每次启动会强拉取远程数据(本地未推送改动会先备份再丢弃);
-     每次修改后会自动提交并强制推送。
+     每次修改后会自动提交并强制推送.
+  6. 任意提示符下输入 q / quit / exit 都可退出或返回上一级:
+     主菜单(>)输入则退出程序;control 模式中间提示(学号/分值)输入则返回主菜单.
 =========================================================
 """ % (TOTAL_STUDENTS, STUDENT_COUNT, STUDENT_COUNT)
 
 
 # ------------------------- 工具函数 -------------------------
+
+class BackToMenu(Exception):
+    """中间提示符输入 q/quit/exit 时抛出,中断当前流程返回主菜单"""
+
+
+QUIT_WORDS = ("q", "quit", "exit", "bye")
+
+
+def is_quit_word(raw):
+    return raw.strip().lower() in QUIT_WORDS
+
 
 def today_str():
     return date.today().isoformat()
@@ -133,10 +146,12 @@ def save_student(sid, score, records):
 def ask_int(prompt, minimum=1, maximum=10000):
     while True:
         raw = input(prompt).strip()
+        if is_quit_word(raw):
+            raise BackToMenu()
         try:
             n = int(raw)
         except ValueError:
-            print("! 请输入正整数")
+            print("! 请输入正整数(或输入 q/quit 返回主菜单)")
             continue
         if minimum <= n <= maximum:
             return n
@@ -148,6 +163,8 @@ def ask_student(prompt="请输入学号: "):
         sid = norm_sid(input(prompt))
         if not sid:
             continue
+        if is_quit_word(sid):
+            raise BackToMenu()
         if not student_exists(sid):
             print("! 无此学生(%s),请核对学号" % sid)
             continue
@@ -165,7 +182,7 @@ def do_add(sid, points):
     records.append({"op": "add", "points": points, "date": today_str()})
     score += points
     save_student(sid, score, records)
-    print("✓ 学生 %s 加分 %d,当前得分: %d" % (sid, points, score))
+    print("OK 学生 %s 加分 %d,当前得分: %d" % (sid, points, score))
     git_commit_push("add %d分 %s %s" % (points, sid, today_str()), sid)
     return True
 
@@ -175,7 +192,7 @@ def do_less(sid, points):
     records.append({"op": "less", "points": points, "date": today_str()})
     score -= points
     save_student(sid, score, records)
-    print("✓ 学生 %s 扣分 %d,当前得分: %d" % (sid, points, score))
+    print("OK 学生 %s 扣分 %d,当前得分: %d" % (sid, points, score))
     git_commit_push("less %d分 %s %s" % (points, sid, today_str()), sid)
     return True
 
@@ -192,17 +209,17 @@ def do_cancle(sid):
         except (ValueError, KeyError):
             continue
         if not is_current_week(d):
-            print("× 学生 %s 最近一次扣分发生在 %s(本周之前),无法撤销" % (sid, rec["date"]))
+            print("NO 学生 %s 最近一次扣分发生在 %s(本周之前),无法撤销" % (sid, rec["date"]))
             return False
         back = int(rec.get("points", 0))
         del records[i]
         score += back
         save_student(sid, score, records)
-        print("✓ 已撤销学生 %s 于 %s 的扣分 %d,当前得分: %d"
+        print("OK 已撤销学生 %s 于 %s 的扣分 %d,当前得分: %d"
               % (sid, rec["date"], back, score))
         git_commit_push("cancle %d分 %s %s" % (back, sid, today_str()), sid)
         return True
-    print("× 学生 %s 没有可撤销的扣分记录(本周内无扣分),无操作" % sid)
+    print("NO 学生 %s 没有可撤销的扣分记录(本周内无扣分),无操作" % sid)
     return False
 
 
@@ -267,10 +284,10 @@ def current_branch():
 
 
 def git_pull_on_startup():
-    """启动时强拉取:fetch 后 hard reset 到远程分支,本地与远程强制保持一致。
-    本地未推送的改动/提交会先备份,避免强拉取导致数据丢失。"""
+    """启动时强拉取:fetch 后 hard reset 到远程分支,本地与远程强制保持一致.
+    本地未推送的改动/提交会先备份,避免强拉取导致数据丢失."""
     if not git_repo_ready():
-        print("…首次运行,正在创建本地 git 仓库...")
+        print("...首次运行,正在创建本地 git 仓库...")
         code, out, err = run_git("init", "-b", "main")
         if code != 0:
             print("! git init 失败: %s" % (err or out))
@@ -286,7 +303,7 @@ def git_pull_on_startup():
         if url:
             code, out, err = run_git("remote", "add", "origin", url)
             if code == 0:
-                print("✓ 已从 remote_url.txt 配置远程仓库: %s" % url)
+                print("OK 已从 remote_url.txt 配置远程仓库: %s" % url)
             else:
                 print("! 配置远程仓库失败: %s" % (err or out))
     if not has_origin():
@@ -295,11 +312,11 @@ def git_pull_on_startup():
               "    git -C \"%s\" remote add origin <你的远程仓库地址>" % ROOT)
         return
     branch = current_branch()
-    print("…正在强拉取远程数据 (fetch + reset --hard origin/%s)..." % branch)
+    print("...正在强拉取远程数据 (fetch + reset --hard origin/%s)..." % branch)
     code, out, err = run_git("fetch", "origin")
     if code != 0:
         print("! fetch 失败: %s" % (err or out))
-        print("  请检查网络/仓库权限后重新启动。")
+        print("  请检查网络/仓库权限后重新启动.")
         return
     dirty = not git_status_is_clean()
     code, ahead_out, _ = run_git("rev-list", "--count", "origin/%s..HEAD" % branch)
@@ -310,19 +327,19 @@ def git_pull_on_startup():
             run_git("branch", "-f", backup)
         if dirty:
             run_git("stash", "push", "-u", "-m", backup)
-        print("! 本地有未推送改动,已备份(提交→分支 %s,工作区改动→stash);"
+        print("! 本地有未推送改动,已备份(提交->分支 %s,工作区改动->stash);"
               "如需找回:\n    git -C \"%s\" checkout %s"
               % (backup, ROOT, backup))
     code, out, err = run_git("reset", "--hard", "origin/%s" % branch)
     if code == 0:
-        print("✓ 已强制同步为远程最新数据: %s" % (out or "无更新"))
+        print("OK 已强制同步为远程最新数据: %s" % (out or "无更新"))
     else:
         print("! 强拉取失败: %s" % (err or out))
 
 
 def git_commit_push(msg, sid=None):
-    """每次修改后自动提交并强制推送(--force 直接覆盖远程)。
-    指定 sid 时只提交该学生文件,避免把无关改动一起提交。"""
+    """每次修改后自动提交并强制推送(--force 直接覆盖远程).
+    指定 sid 时只提交该学生文件,避免把无关改动一起提交."""
     if not git_repo_ready():
         return
     ensure_git_identity()
@@ -392,7 +409,7 @@ def cmd_control():
     print("  add <分值> 加分 | less <分值> 扣分 | cancle 撤销上次扣分 | help | exit 返回")
     while True:
         raw = input("control> ").strip().lower()
-        if raw in ("exit", "quit", "q", "返回"):
+        if is_quit_word(raw) or raw == "返回":
             return
         parts = raw.split()
         op = parts[0] if parts else ""
@@ -459,7 +476,7 @@ def create_student_files():
 def main():
     print("==================== 学生积分管理 ====================")
     print("可用操作: help | control | add | less | cancle | rank | score | exit")
-    print("输入 help 查看所有操作及使用方法;输入 exit 退出\n")
+    print("输入 help 查看所有操作及使用方法;输入 q / quit / exit 退出程序\n")
 
     git_pull_on_startup()
 
@@ -481,32 +498,36 @@ def main():
         parts = raw.split()
         cmd = parts[0].lower()
 
-        if cmd in ("help", "h", "?", "menu"):
-            print_help()
-        elif cmd == "control":
-            cmd_control()
-        elif cmd == "rank":
-            cmd_rank()
-        elif cmd == "score" and len(parts) >= 2:
-            cmd_show(parts[1])
-        elif cmd == "add" and len(parts) >= 3:
-            try:
-                cmd_add(parts[1], int(parts[2]))
-            except ValueError:
-                print("! 用法: add <学号> <正整数分值>")
-        elif cmd == "less" and len(parts) >= 3:
-            try:
-                cmd_less(parts[1], int(parts[2]))
-            except ValueError:
-                print("! 用法: less <学号> <正整数分值>")
-        elif cmd == "cancle" and len(parts) >= 2:
-            cmd_cancle(parts[1])
-        elif cmd in ("exit", "quit", "q", "bye"):
+        if cmd in ("exit", "quit", "q", "bye"):
             print("再见")
             return
-        else:
-            print("! 未知操作: %s\n" % raw)
-            print_help()
+
+        try:
+            if cmd in ("help", "h", "?", "menu"):
+                print_help()
+            elif cmd == "control":
+                cmd_control()
+            elif cmd == "rank":
+                cmd_rank()
+            elif cmd == "score" and len(parts) >= 2:
+                cmd_show(parts[1])
+            elif cmd == "add" and len(parts) >= 3:
+                try:
+                    cmd_add(parts[1], int(parts[2]))
+                except ValueError:
+                    print("! 用法: add <学号> <正整数分值>")
+            elif cmd == "less" and len(parts) >= 3:
+                try:
+                    cmd_less(parts[1], int(parts[2]))
+                except ValueError:
+                    print("! 用法: less <学号> <正整数分值>")
+            elif cmd == "cancle" and len(parts) >= 2:
+                cmd_cancle(parts[1])
+            else:
+                print("! 未知操作: %s\n" % raw)
+                print_help()
+        except BackToMenu:
+            print("(已返回主菜单;输入 q/quit/exit 可退出程序)\n")
 
 
 if __name__ == "__main__":
