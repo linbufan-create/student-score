@@ -3,13 +3,14 @@
 学生积分管理程序
 - 每个学生一个 json 文件,文件名为学号(如 2026001.json)
 - 文件内容为标准 JSON:{"score": 得分, "records": [{"op": "add/less", "points": 分值, "date": "日期"}, ...]}
-- 启动时自动 git pull 更新数据;每次修改后自动 git add/commit/push
+- 启动时强拉取(与远程强制保持一致);每次修改后自动 git add/commit 并强制推送
 """
 
 import json
 import os
 import subprocess
 import sys
+import time
 from datetime import date
 
 if getattr(sys, "frozen", False):
@@ -67,7 +68,8 @@ control 模式下的操作(进入后先询问):
      若该学生本周内没有扣分记录,则无操作;上一周及更早的扣分无法撤销。
   4. 数据文件结构(标准 JSON):
        {"score": 100, "records": [{"op": "add", "points": 2, "date": "2026-09-07"}]}
-  5. 每次启动会先执行 git pull 同步最新数据;每次修改后会自动提交并推送。
+  5. 每次启动会强拉取远程数据(本地未推送改动会先备份再丢弃);
+     每次修改后会自动提交并强制推送。
 =========================================================
 """ % (TOTAL_STUDENTS, STUDENT_COUNT, STUDENT_COUNT)
 
@@ -257,8 +259,16 @@ def git_commit_failed_noop(err_text):
     return ("nothing to commit" in err_text) or ("nothing added to commit" in err_text)
 
 
+def current_branch():
+    code, out, _ = run_git("rev-parse", "--abbrev-ref", "HEAD")
+    if code == 0 and out and out != "HEAD":
+        return out
+    return "main"
+
+
 def git_pull_on_startup():
-    """确保本地仓库存在 -> 提交本地改动 -> 配置远程 -> 启动时拉取最新数据"""
+    """启动时强拉取:fetch 后 hard reset 到远程分支,本地与远程强制保持一致。
+    本地未推送的改动/提交会先备份,避免强拉取导致数据丢失。"""
     if not git_repo_ready():
         print("…首次运行,正在创建本地 git 仓库...")
         code, out, err = run_git("init", "-b", "main")
@@ -271,10 +281,6 @@ def git_pull_on_startup():
         if code != 0 and not git_commit_failed_noop(err or out):
             print("! 初始化提交失败: %s" % (err or out))
     ensure_git_identity()
-    if not git_status_is_clean():
-        code, out, err = run_git("commit", "-am", "同步前自动提交")
-        if code != 0 and not git_commit_failed_noop(err or out):
-            print("! 启动前自动提交失败:\n%s" % (err or out))
     if not has_origin():
         url = read_remote_url_file()
         if url:
@@ -284,21 +290,38 @@ def git_pull_on_startup():
             else:
                 print("! 配置远程仓库失败: %s" % (err or out))
     if not has_origin():
-        print("! 未配置远程仓库,跳过 git pull")
+        print("! 未配置远程仓库,跳过强拉取")
         print("  如需多台电脑同步数据,请先执行:\n"
               "    git -C \"%s\" remote add origin <你的远程仓库地址>" % ROOT)
         return
-    print("…正在同步远程数据 (git pull)...")
-    code, out, err = run_git("pull", "--no-edit")
+    branch = current_branch()
+    print("…正在强拉取远程数据 (fetch + reset --hard origin/%s)..." % branch)
+    code, out, err = run_git("fetch", "origin")
+    if code != 0:
+        print("! fetch 失败: %s" % (err or out))
+        print("  请检查网络/仓库权限后重新启动。")
+        return
+    dirty = not git_status_is_clean()
+    code, ahead_out, _ = run_git("rev-list", "--count", "origin/%s..HEAD" % branch)
+    ahead = code == 0 and ahead_out.strip() not in ("", "0")
+    if dirty or ahead:
+        backup = "auto-backup-%s" % time.strftime("%Y%m%d-%H%M%S")
+        if ahead:
+            run_git("branch", "-f", backup)
+        if dirty:
+            run_git("stash", "push", "-u", "-m", backup)
+        print("! 本地有未推送改动,已备份(提交→分支 %s,工作区改动→stash);"
+              "如需找回:\n    git -C \"%s\" checkout %s"
+              % (backup, ROOT, backup))
+    code, out, err = run_git("reset", "--hard", "origin/%s" % branch)
     if code == 0:
-        print("✓ 数据已同步: %s" % (out or "无更新"))
+        print("✓ 已强制同步为远程最新数据: %s" % (out or "无更新"))
     else:
-        print("! git pull 失败: %s" % (err or out))
-        print("  请检查网络/仓库权限,或手动解决冲突后重新启动。")
+        print("! 强拉取失败: %s" % (err or out))
 
 
 def git_commit_push(msg, sid=None):
-    """每次修改后自动提交并推送;推送失败时先 pull 再重试一次。
+    """每次修改后自动提交并强制推送(--force 直接覆盖远程)。
     指定 sid 时只提交该学生文件,避免把无关改动一起提交。"""
     if not git_repo_ready():
         return
@@ -317,16 +340,11 @@ def git_commit_push(msg, sid=None):
     if not has_origin():
         print("(改动已保存在本地仓库,未配置远程仓库故未推送)")
         return
-    code, out, err = run_git("push")
+    code, out, err = run_git("push", "--force")
     if code == 0:
         return
-    if "rejected" in (err or out):
-        print("! 推送被拒绝,正在先拉取远程改动再重试...")
-        run_git("pull", "--no-edit")
-        code, out, err = run_git("push")
-        if code == 0:
-            return
-    print("! 推送失败(改动已保存在本地): %s" % (err or out))
+    print("! 强制推送失败(改动已保存在本地,下次启动强拉取会丢弃它): %s"
+          % (err or out))
 
 
 # ------------------------- 界面 -------------------------
